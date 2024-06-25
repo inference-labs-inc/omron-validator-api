@@ -1,0 +1,16 @@
+{
+    "version": "0.2",
+    "ignorePaths": [],
+    "dictionaryDefinitions": [],
+    "dictionaries": [],
+    "words": [
+        "Bittensor",
+        "fastapi",
+        "omron",
+        "Opentensor",
+        "uvicorn",
+        "venv"
+    ],
+    "ignoreWords": [],
+    "import": []
+}
