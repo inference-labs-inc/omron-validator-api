@@ -12,6 +12,7 @@ from fastapi.responses import FileResponse
 app = FastAPI()
 
 BITTENSOR_NETWORK = "finney"
+VERIFY_EXTERNAL_VALIDATOR_SUBNET = False
 
 WEIGHTS_PATH = os.path.join(
     os.environ["VALIDATOR_PATH"], "neurons", "_validator", "proof_of_weights"
@@ -66,7 +67,6 @@ async def proof(block_number: int, hotkey: str, miner_uid: int):
 
 @app.post("/submit_inputs")
 async def submit_inputs(inputs: bytes, signature: bytes, sender: str, netuid: int):
-    network = bittensor.subtensor(network=BITTENSOR_NETWORK)
     # verify signature
     try:
         public_key = substrateinterface.Keypair(ss58_address=sender)
@@ -84,17 +84,19 @@ async def submit_inputs(inputs: bytes, signature: bytes, sender: str, netuid: in
             headers={"X-Error": "Invalid signature"},
         )
     # verify sender is a validator on claimed network
-    try:
-        metagraph = network.metagraph(network)
-        sender_id = metagraph.hotkeys.index(sender)
-        if not metagraph.validator_permit[sender_id]:
-            raise Exception("Sender is not a validator on claimed network")
-    except Exception as e:
-        raise HTTPException(
-            status_code=400,
-            detail="Sender is not a validator on claimed network",
-            headers={"X-Error": "Invalid sender"},
-        )
+    if VERIFY_EXTERNAL_VALIDATOR_SUBNET:
+        try:
+            network = bittensor.subtensor(network=BITTENSOR_NETWORK)
+            metagraph = network.metagraph(netuid)
+            sender_id = metagraph.hotkeys.index(sender)
+            if not metagraph.validator_permit[sender_id]:
+                raise Exception("Sender is not a validator on claimed network")
+        except Exception as e:
+            raise HTTPException(
+                status_code=400,
+                detail="Sender is not a validator on claimed network",
+                headers={"X-Error": "Invalid sender"},
+            )
     # do stuff with inputs
     transaction_hash = hashlib.sha256(inputs + signature).hexdigest()
     inputs = json.loads(inputs)
