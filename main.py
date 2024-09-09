@@ -1,3 +1,4 @@
+import base64
 import hashlib
 import json
 import os
@@ -65,16 +66,18 @@ async def proof(block_number: int, hotkey: str, miner_uid: int):
 
 
 @app.post("/submit_inputs")
-async def submit_inputs(inputs: bytes, signature: bytes, sender: str, netuid: int):
-    # verify signature
+async def submit_inputs(inputs: str, signature: str, sender: str, netuid: int):
+    # decode inputs and signature then verify signature
     try:
+        inputs = base64.b64decode(inputs)
+        signature = base64.b64decode(signature)
         public_key = substrateinterface.Keypair(ss58_address=sender)
         signature_is_valid = public_key.verify(data=inputs, signature=signature)
     except Exception as e:
         raise HTTPException(
             status_code=400,
-            detail="Invalid signing key",
-            headers={"X-Error": "Invalid signing key"},
+            detail=f"Signature or input error: {e}",
+            headers={"X-Error": "Signature or input error"},
         )
     if not signature_is_valid:
         raise HTTPException(
