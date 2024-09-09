@@ -2,7 +2,6 @@ import hashlib
 import json
 import os
 
-import bittensor
 import substrateinterface
 
 from fastapi import FastAPI, HTTPException
@@ -86,6 +85,7 @@ async def submit_inputs(inputs: bytes, signature: bytes, sender: str, netuid: in
     # verify sender is a validator on claimed network
     if VERIFY_EXTERNAL_VALIDATOR_SUBNET:
         try:
+            import bittensor
             network = bittensor.subtensor(network=BITTENSOR_NETWORK)
             metagraph = network.metagraph(netuid)
             sender_id = metagraph.hotkeys.index(sender)
