@@ -6,8 +6,13 @@
     "words": [
         "Bittensor",
         "fastapi",
+        "Keypair",
+        "metagraph",
+        "netuid",
         "omron",
         "Opentensor",
+        "substrateinterface",
+        "subtensor",
         "uvicorn",
         "venv"
     ],

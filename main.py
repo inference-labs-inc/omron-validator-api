@@ -3,11 +3,12 @@ import hashlib
 import json
 import os
 
+import requests
 import substrateinterface
 
 from fastapi import FastAPI, HTTPException
 from fastapi.staticfiles import StaticFiles
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, JSONResponse
 
 app = FastAPI()
 
@@ -17,6 +18,9 @@ VERIFY_EXTERNAL_VALIDATOR_SUBNET = False
 WEIGHTS_PATH = os.path.join(
     os.environ["VALIDATOR_PATH"], "neurons", "_validator", "proof_of_weights"
 )
+VALIDATOR_API_PORT = os.environ.get("VALIDATOR_API_PORT", 8080)
+VALIDATOR_API_URL = os.environ.get("VALIDATOR_API_URL", "http://localhost")
+LAZY_RUN = os.environ.get("LAZY_RUN", False)
 
 RECEIPTS_PATH = os.path.join(
     os.environ["VALIDATOR_PATH"],
@@ -30,7 +34,10 @@ RECEIPTS_PATH = os.path.join(
 @app.get("/")
 async def root():
     return {
-        "message": "To get a proof, use /proofs/{block_number}/{hotkey}/{miner_uid} endpoint. To get a receipt, use /receipts/{transaction_hash} endpoint."
+        "message": (
+            "To get a proof, use /proofs/{block_number}/{hotkey}/{miner_uid} endpoint. "
+            "To get a receipt, use /receipts/{transaction_hash} endpoint."
+        )
     }
 
 
@@ -89,6 +96,7 @@ async def submit_inputs(inputs: str, signature: str, sender: str, netuid: int):
     if VERIFY_EXTERNAL_VALIDATOR_SUBNET:
         try:
             import bittensor
+
             network = bittensor.subtensor(network=BITTENSOR_NETWORK)
             metagraph = network.metagraph(netuid)
             sender_id = metagraph.hotkeys.index(sender)
@@ -101,10 +109,21 @@ async def submit_inputs(inputs: str, signature: str, sender: str, netuid: int):
                 headers={"X-Error": "Invalid sender"},
             )
     # do stuff with inputs
-    transaction_hash = hashlib.sha256(inputs + signature).hexdigest()
+    # transaction_hash = hashlib.sha256(inputs + signature).hexdigest()
     inputs = json.loads(inputs)
-    # ...
-    return {"message": "Inputs submitted successfully"}
+    if LAZY_RUN:
+        return {"message": "Inputs submitted successfully"}
+    response = requests.post(
+        f"{VALIDATOR_API_URL}:{VALIDATOR_API_PORT}/pow-request",
+        json=inputs,
+    )
+    if response.status_code != 200:
+        raise HTTPException(
+            status_code=400,
+            detail="Failed to submit inputs",
+            headers={"X-Error": "Failed to submit inputs"},
+        )
+    return JSONResponse(content=response.json())
 
 
 @app.get("/get_proof_of_weights")
