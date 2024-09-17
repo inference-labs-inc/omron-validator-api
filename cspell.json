@@ -11,6 +11,7 @@
         "netuid",
         "omron",
         "Opentensor",
+        "pydantic",
         "substrateinterface",
         "subtensor",
         "uvicorn",
